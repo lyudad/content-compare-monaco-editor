@@ -3,6 +3,8 @@ import MonacoEditor from 'react-monaco-editor';
 import './App.css';
 
 class App extends Component {
+  decorator = [];
+
   constructor(props) {
     super(props);
     this.state = {
@@ -12,12 +14,34 @@ class App extends Component {
     }
   }
 
+  componentDidUpdate(prevProps, prevState){
+    const {addedText} = this.state;
+
+    if(!prevState.addedText && addedText){
+      this.decorator = this.editor.deltaDecorations(this.decorator, [{
+        range: new monaco.Range(1,1,addedText.startPosition-1,1),
+        options: {
+          isWholeLine: true,
+          className: 'greenDecorator',
+        }
+      }, {
+        range: new monaco.Range(addedText.startPosition,1, addedText.startPosition + addedText.newValue.split('\n').length,1),
+        options: {
+          isWholeLine: true,
+          className: 'blueDecorator',
+        }
+      }]);
+    }
+  }
+
   editorDidMount = (editor, monaco) => {
     editor.focus();
     
     this.editor = editor;
     this.monaco = monaco;
   }
+
+
 
   addCodeLensProvider = () => {
     const {addedText} = this.state;
@@ -35,23 +59,34 @@ class App extends Component {
       this.setState({ code: newText, addedText: null });
     }, '');
 
+    // this.decorator = this.editor.deltaDecorations(this.decorator, [{
+    //   range: new monaco.Range(1,1,addedText.startPosition-1,1),
+    //   options: {
+    //     isWholeLine: true,
+    //     className: 'greenDecorator',
+    //   }
+    // }, {
+    //   range: new monaco.Range(addedText.startPosition,1, addedText.startPosition,1),
+    //   options: {
+    //     isWholeLine: true,
+    //     className: 'blueDecorator',
+    //   }
+    // }]);
+
     this.provider = this.monaco.languages.registerCodeLensProvider('javascript', {
       provideCodeLenses: function (model, token) {
-        console.log('provideCodeLenses')
         return  [
           {
-              range: { startLineNumber: 1 },
-              id: 1,
+              range: { startLineNumber: 1, endLineNumber: 1, startColumn: 1, endColumn: 1},
               command: {
                   id: selectChanges('current'),
-                  title: 'Accept Current Text',
+                  title: 'Select Current Text',
               },
           }, {
-              range: { startLineNumber: addedText.startPosition },
-              id: 1,
+              range: { startLineNumber: addedText.startPosition, endLineNumber: addedText.startPosition, startColumn: 1, endColumn: 1 },
               command: {
                   id: selectChanges('incoming'),
-                  title: 'Accept Incoming Text',
+                  title: 'Select Incoming Text',
               },
           }
         ];
@@ -71,10 +106,9 @@ class App extends Component {
   }
 
   onAddText = () => {
-    const {code, textarea, addedText} = this.state;
-    const newCode = `${code}\n${textarea}`
+    const {code, textarea} = this.state;
     this.setState({
-      code: newCode, 
+      code: `${code}\n${textarea}`, 
       textarea: '', 
       addedText: { 
         startPosition: code.split('\n').length + 1, oldValue: code, newValue: textarea
@@ -87,7 +121,7 @@ class App extends Component {
     const options = {
       selectOnLineNumbers: true
     };
-
+console.log('addedText', addedText, this.provider);
     if(addedText) {
       this.addCodeLensProvider();
     }
